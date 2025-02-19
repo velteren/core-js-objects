@@ -391,33 +391,154 @@ function group(array, keySelector, valueSelector) {
  *  For more examples see unit tests.
  */
 
+class Selector {
+  constructor() {
+    this.elemValue = '';
+    this.idValue = '';
+    this.classValue = '';
+    this.attrValue = '';
+    this.pseudoClassValue = '';
+    this.pseudoElemValue = '';
+    this.combinedValue = '';
+    this.moreThenOneError = new Error(
+      'Element, id and pseudo-element should not occur more then one time inside the selector'
+    );
+    this.orderError = new Error(
+      'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+    );
+  }
+
+  element(value) {
+    if (this.elemValue) {
+      throw this.moreThenOneError;
+    }
+    if (
+      this.idValue ||
+      this.classValue ||
+      this.attrValue ||
+      this.pseudoClassValue ||
+      this.pseudoElemValue
+    ) {
+      throw this.orderError;
+    }
+    const clone = this.#clone();
+    clone.elemValue = value;
+    return clone;
+  }
+
+  id(value) {
+    if (this.idValue) {
+      throw this.moreThenOneError;
+    }
+    if (
+      this.classValue ||
+      this.attrValue ||
+      this.pseudoClassValue ||
+      this.pseudoElemValue
+    ) {
+      throw this.orderError;
+    }
+    const clone = this.#clone();
+    clone.idValue = `#${value}`;
+    return clone;
+  }
+
+  class(value) {
+    if (this.attrValue || this.pseudoClassValue || this.pseudoElemValue) {
+      throw this.orderError;
+    }
+    const clone = this.#clone();
+    clone.classValue += `.${value}`;
+    return clone;
+  }
+
+  attr(value) {
+    if (this.pseudoClassValue || this.pseudoElemValue) {
+      throw this.orderError;
+    }
+    const clone = this.#clone();
+    clone.attrValue += `[${value}]`;
+    return clone;
+  }
+
+  pseudoClass(value) {
+    if (this.pseudoElemValue) {
+      throw this.orderError;
+    }
+    const clone = this.#clone();
+    clone.pseudoClassValue += `:${value}`;
+    return clone;
+  }
+
+  pseudoElement(value) {
+    if (this.pseudoElemValue) {
+      throw this.moreThenOneError;
+    }
+    const clone = this.#clone();
+    clone.pseudoElemValue = `::${value}`;
+    return clone;
+  }
+
+  combine(selector1, combinator, selector2) {
+    const clone = new Selector();
+    clone.elemValue = selector1.elemValue || selector2.elemValue;
+    clone.idValue = selector1.idValue || selector2.idValue;
+    clone.classValue = selector1.classValue + selector2.classValue;
+    clone.attrValue = selector1.attrValue + selector2.attrValue;
+    clone.pseudoClassValue =
+      selector1.pseudoClassValue + selector2.pseudoClassValue;
+    clone.pseudoElemValue =
+      selector1.pseudoElemValue || selector2.pseudoElemValue;
+    clone.combinedValue = `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
+    this.fix = ''; // eslint fix
+    return clone;
+  }
+
+  stringify() {
+    if (this.combinedValue) return this.combinedValue;
+    return (
+      this.elemValue +
+      this.idValue +
+      this.classValue +
+      this.attrValue +
+      this.pseudoClassValue +
+      this.pseudoElemValue
+    );
+  }
+
+  #clone() {
+    const clone = new Selector();
+    clone.elemValue = this.elemValue;
+    clone.idValue = this.idValue;
+    clone.classValue = this.classValue;
+    clone.attrValue = this.attrValue;
+    clone.pseudoClassValue = this.pseudoClassValue;
+    clone.pseudoElemValue = this.pseudoElemValue;
+    return clone;
+  }
+}
+
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  element(value) {
+    return new Selector().element(value);
   },
-
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    return new Selector().id(value);
   },
-
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    return new Selector().class(value);
   },
-
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    return new Selector().attr(value);
   },
-
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    return new Selector().pseudoClass(value);
   },
-
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    return new Selector().pseudoElement(value);
   },
-
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    return new Selector().combine(selector1, combinator, selector2);
   },
 };
 
